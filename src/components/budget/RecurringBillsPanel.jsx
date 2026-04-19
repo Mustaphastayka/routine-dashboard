@@ -110,18 +110,18 @@ function RecurringBillsPanel({
                   <button
                     type="button"
                     onClick={() => onEditBill(bill)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-300 transition hover:border-cyan-300/30 hover:text-cyan-200"
+                    className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-300 transition hover:border-cyan-300/30 hover:text-cyan-200"
                     aria-label="Edit recurring bill"
                   >
-                    <Pencil size={15} />
+                    <Pencil size={18} />
                   </button>
                   <button
                     type="button"
                     onClick={() => onDeleteBill(bill.id)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-300 transition hover:border-rose-300/30 hover:text-rose-200"
+                    className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-300 transition hover:border-rose-300/30 hover:text-rose-200"
                     aria-label="Delete recurring bill"
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={18} />
                   </button>
                 </div>
               </div>
@@ -136,7 +136,12 @@ function RecurringBillsPanel({
             </article>
           ))
         ) : (
-          <EmptyState>
+          <EmptyState
+            action={{
+              label: 'Add a bill',
+              onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+          >
             No recurring bills yet. Add rent, utilities, subscriptions, or other fixed costs here.
           </EmptyState>
         )}

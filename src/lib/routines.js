@@ -11,24 +11,88 @@ export function normalizeRoutineStep(step, index) {
     return {
       id: `step-${index + 1}`,
       label: step,
+      timeLabel: '',
     }
   }
 
   return {
     id: step?.id ?? `step-${index + 1}`,
     label: step?.label ?? `Step ${index + 1}`,
+    timeLabel: step?.timeLabel ?? step?.time ?? '',
   }
 }
 
 export function normalizeRoutineTemplate(template, index = 0) {
   return {
     id: template?.id ?? `template-${index + 1}`,
-    name: template?.name ?? `Template ${index + 1}`,
+    name: template?.name ?? `My Routine ${index + 1}`,
     timeOfDay: template?.timeOfDay ?? 'anytime',
     steps: Array.isArray(template?.steps)
       ? template.steps.map(normalizeRoutineStep)
       : [],
   }
+}
+
+function createPersonalRoutineTemplate() {
+  return {
+    id: createEntityId('routine'),
+    name: 'My Routine',
+    timeOfDay: 'anytime',
+    steps: [],
+  }
+}
+
+function ensureSelectedRoutineTemplate(currentData) {
+  const routineTemplates = Array.isArray(currentData.routineTemplates)
+    ? currentData.routineTemplates.map((template, index) =>
+        normalizeRoutineTemplate(template, index),
+      )
+    : []
+  const selectedTemplateId = currentData.profile?.selectedRoutineTemplateId
+  const selectedTemplate =
+    routineTemplates.find((template) => template.id === selectedTemplateId) ??
+    routineTemplates[0] ??
+    null
+
+  if (selectedTemplate) {
+    return {
+      nextData: {
+        ...currentData,
+        routineTemplates,
+      },
+      routineTemplates,
+      selectedTemplate,
+    }
+  }
+
+  const personalRoutine = createPersonalRoutineTemplate()
+
+  return {
+    nextData: {
+      ...currentData,
+      routineTemplates: [personalRoutine],
+      profile: {
+        ...currentData.profile,
+        selectedRoutineTemplateId: personalRoutine.id,
+      },
+    },
+    routineTemplates: [personalRoutine],
+    selectedTemplate: personalRoutine,
+  }
+}
+
+function stripTemplateTaskKeysFromOrder(dailyProgressByDate, taskKeys) {
+  return Object.fromEntries(
+    Object.entries(dailyProgressByDate ?? {}).map(([dateKey, dayData]) => [
+      dateKey,
+      {
+        ...dayData,
+        routineTaskOrder: Array.isArray(dayData?.routineTaskOrder)
+          ? dayData.routineTaskOrder.filter((taskKey) => !taskKeys.includes(taskKey))
+          : dayData?.routineTaskOrder,
+      },
+    ]),
+  )
 }
 
 function normalizeRoutineAddition(addition, index = 0) {
@@ -74,13 +138,14 @@ function buildTemplateTasks({ template, currentDay }) {
     id: step.id,
     templateId: template.id,
     label: step.label,
+    timeLabel: step.timeLabel ?? '',
     status: getTemplateStepStatus({
       currentDay,
       templateId: template.id,
       stepId: step.id,
     }),
     kind: 'template',
-    metaLabel: `Step ${index + 1}`,
+    metaLabel: `Routine ${index + 1}`,
   }))
 }
 
@@ -156,11 +221,197 @@ export function readRoutineState(appData = readAppData()) {
   return {
     templates,
     selectedTemplateId: selectedTemplate?.id ?? '',
+    selectedRoutineName: selectedTemplate?.name ?? '',
+    routineSteps: selectedTemplate?.steps ?? [],
     todayKey,
     dailyProgressByDate: allDailyProgress,
     previousTrackedDays,
     ...routineDayState,
   }
+}
+
+export function addRoutineTemplateTask({ label, timeLabel = '' }) {
+  const trimmedLabel = label.trim()
+  const trimmedTimeLabel = timeLabel.trim()
+
+  if (!trimmedLabel) {
+    return readRoutineState()
+  }
+
+  const nextAppData = updateAppData((currentData) => {
+    const { nextData, routineTemplates, selectedTemplate } =
+      ensureSelectedRoutineTemplate(currentData)
+
+    return {
+      ...nextData,
+      routineTemplates: routineTemplates.map((template) =>
+        template.id === selectedTemplate.id
+          ? {
+              ...template,
+              steps: [
+                ...template.steps,
+                {
+                  id: createEntityId('routine-step'),
+                  label: trimmedLabel,
+                  timeLabel: trimmedTimeLabel,
+                },
+              ],
+            }
+          : template,
+      ),
+    }
+  })
+
+  return readRoutineState(nextAppData)
+}
+
+export function updateRoutineTemplateTask({ stepId, label, timeLabel = '' }) {
+  const trimmedLabel = label.trim()
+  const trimmedTimeLabel = timeLabel.trim()
+
+  if (!trimmedLabel) {
+    return readRoutineState()
+  }
+
+  const nextAppData = updateAppData((currentData) => ({
+    ...currentData,
+    routineTemplates: (Array.isArray(currentData.routineTemplates)
+      ? currentData.routineTemplates
+      : []
+    ).map((template, index) => {
+      const normalizedTemplate = normalizeRoutineTemplate(template, index)
+
+      return {
+        ...normalizedTemplate,
+        steps: normalizedTemplate.steps.map((step) =>
+          step.id === stepId
+            ? {
+                ...step,
+                label: trimmedLabel,
+                timeLabel: trimmedTimeLabel,
+              }
+            : step,
+        ),
+      }
+    }),
+  }))
+
+  return readRoutineState(nextAppData)
+}
+
+export function deleteRoutineTemplateTask({ stepId }) {
+  const templateTaskKey = `template:${stepId}`
+
+  const nextAppData = updateAppData((currentData) => ({
+    ...currentData,
+    routineTemplates: (Array.isArray(currentData.routineTemplates)
+      ? currentData.routineTemplates
+      : []
+    ).map((template, index) => {
+      const normalizedTemplate = normalizeRoutineTemplate(template, index)
+
+      return {
+        ...normalizedTemplate,
+        steps: normalizedTemplate.steps.filter((step) => step.id !== stepId),
+      }
+    }),
+    dailyProgressByDate: Object.fromEntries(
+      Object.entries(currentData.dailyProgressByDate ?? {}).map(([dateKey, dayData]) => {
+        const completionByTemplate = Object.fromEntries(
+          Object.entries(dayData?.completionByTemplate ?? {}).map(
+            ([templateId, completedStepIds]) => [
+              templateId,
+              Array.isArray(completedStepIds)
+                ? completedStepIds.filter((id) => id !== stepId)
+                : completedStepIds,
+            ],
+          ),
+        )
+        const routineStatusByTemplate = Object.fromEntries(
+          Object.entries(dayData?.routineStatusByTemplate ?? {}).map(
+            ([templateId, statusMap]) => {
+              const nextStatusMap = { ...(statusMap ?? {}) }
+              delete nextStatusMap[stepId]
+
+              return [templateId, nextStatusMap]
+            },
+          ),
+        )
+
+        return [
+          dateKey,
+          {
+            ...dayData,
+            completionByTemplate,
+            routineStatusByTemplate,
+            routineTaskOrder: Array.isArray(dayData?.routineTaskOrder)
+              ? dayData.routineTaskOrder.filter((taskKey) => taskKey !== templateTaskKey)
+              : dayData?.routineTaskOrder,
+          },
+        ]
+      }),
+    ),
+  }))
+
+  return readRoutineState(nextAppData)
+}
+
+export function moveRoutineTemplateTask({ stepId, direction }) {
+  const nextAppData = updateAppData((currentData) => {
+    const routineTemplates = Array.isArray(currentData.routineTemplates)
+      ? currentData.routineTemplates.map((template, index) =>
+          normalizeRoutineTemplate(template, index),
+        )
+      : []
+    const selectedTemplateId = currentData.profile?.selectedRoutineTemplateId
+    const selectedTemplate =
+      routineTemplates.find((template) => template.id === selectedTemplateId) ??
+      routineTemplates[0] ??
+      null
+
+    if (!selectedTemplate) {
+      return currentData
+    }
+
+    const currentIndex = selectedTemplate.steps.findIndex((step) => step.id === stepId)
+
+    if (currentIndex === -1) {
+      return currentData
+    }
+
+    const nextIndex =
+      direction === 'up'
+        ? currentIndex - 1
+        : direction === 'down'
+          ? currentIndex + 1
+          : currentIndex
+
+    if (nextIndex < 0 || nextIndex >= selectedTemplate.steps.length) {
+      return currentData
+    }
+
+    const nextSteps = [...selectedTemplate.steps]
+    const [movedStep] = nextSteps.splice(currentIndex, 1)
+    nextSteps.splice(nextIndex, 0, movedStep)
+
+    return {
+      ...currentData,
+      routineTemplates: routineTemplates.map((template) =>
+        template.id === selectedTemplate.id
+          ? {
+              ...template,
+              steps: nextSteps,
+            }
+          : template,
+      ),
+      dailyProgressByDate: stripTemplateTaskKeysFromOrder(
+        currentData.dailyProgressByDate,
+        selectedTemplate.steps.map((step) => `template:${step.id}`),
+      ),
+    }
+  })
+
+  return readRoutineState(nextAppData)
 }
 
 export function updateSelectedRoutineTemplate(templateId) {

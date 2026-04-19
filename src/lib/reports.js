@@ -138,6 +138,22 @@ function buildMonthlySpendingTrend(budgetState) {
     }))
 }
 
+function buildConsistencyTrend({ template, dailyProgressByDate }) {
+  return Array.from({ length: 28 }, (_, index) => {
+    const { key, label } = getDateKeyForOffset(index - 27)
+
+    return {
+      date: key,
+      label,
+      completion: getCompletionPercent({
+        dateKey: key,
+        template,
+        dailyProgressByDate,
+      }),
+    }
+  })
+}
+
 export function readReportsSnapshot() {
   const appData = readAppData()
   const routineState = readRoutineState(appData)
@@ -148,10 +164,15 @@ export function readReportsSnapshot() {
     template: selectedTemplate,
     dailyProgressByDate: routineState.dailyProgressByDate,
   })
+  const consistencyTrend = buildConsistencyTrend({
+    template: selectedTemplate,
+    dailyProgressByDate: routineState.dailyProgressByDate,
+  })
   const routineDataPoints = routineTrend.filter((point) => point.completion > 0).length
 
   return {
     routineTrend,
+    consistencyTrend,
     hasRoutineTrendData: routineDataPoints > 0,
     currentStreak: getCurrentStreak({
       template: selectedTemplate,
@@ -163,3 +184,4 @@ export function readReportsSnapshot() {
     currency: budgetState.currency,
   }
 }
+

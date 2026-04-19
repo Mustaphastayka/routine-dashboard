@@ -142,11 +142,11 @@ function BudgetIntro() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-5">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 md:gap-6">
       <PageHero
         eyebrow="Budget"
-        title="Money with less friction"
-        description="Keep monthly income, fixed bills, and flexible spending in one clear view with room to review patterns over time."
+        title="Manage your money"
+        description="Track your income, bills, and spending all in one place."
       />
 
       <BudgetSummaryCards
@@ -157,7 +157,7 @@ function BudgetIntro() {
         remainingMonthlyBalance={budgetState.remainingMonthlyBalance}
       />
 
-      <section className="grid gap-4 xl:grid-cols-[0.7fr_1.3fr]">
+      <section className="grid gap-4 lg:grid-cols-[0.7fr_1.3fr]">
         <IncomePanel
           monthlyIncome={budgetState.monthlyIncome}
           currency={budgetState.currency}
@@ -178,7 +178,7 @@ function BudgetIntro() {
         />
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <ExpenseManager
           currency={budgetState.currency}
           expenses={(budgetState.expenses ?? [])

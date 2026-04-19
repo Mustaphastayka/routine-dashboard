@@ -118,18 +118,18 @@ function ExpenseManager({
                   <button
                     type="button"
                     onClick={() => onEditExpense(expense)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-300 transition hover:border-cyan-300/30 hover:text-cyan-200"
+                    className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-300 transition hover:border-cyan-300/30 hover:text-cyan-200"
                     aria-label="Edit expense"
                   >
-                    <Pencil size={15} />
+                    <Pencil size={18} />
                   </button>
                   <button
                     type="button"
                     onClick={() => onDeleteExpense(expense.id)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-300 transition hover:border-rose-300/30 hover:text-rose-200"
+                    className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-300 transition hover:border-rose-300/30 hover:text-rose-200"
                     aria-label="Delete expense"
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={18} />
                   </button>
                 </div>
               </div>
@@ -140,7 +140,12 @@ function ExpenseManager({
             </article>
           ))
         ) : (
-          <EmptyState>
+          <EmptyState
+            action={{
+              label: 'Log an expense',
+              onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+          >
             No expenses logged yet for this dashboard.
           </EmptyState>
         )}

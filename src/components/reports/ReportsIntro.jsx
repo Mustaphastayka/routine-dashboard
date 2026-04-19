@@ -4,10 +4,12 @@ import { readReportsSnapshot } from '../../lib/reports.js'
 import ReportsSummaryCards from './ReportsSummaryCards.jsx'
 import RoutineTrendCard from './RoutineTrendCard.jsx'
 import SpendingSummaryCard from './SpendingSummaryCard.jsx'
+import ConsistencyGrid from './ConsistencyGrid.jsx'
 
 function ReportsIntro() {
   const snapshot = readReportsSnapshot() ?? {
     routineTrend: [],
+    consistencyTrend: [],
     hasRoutineTrendData: false,
     currentStreak: 0,
     completedTasksCount: 0,
@@ -27,11 +29,11 @@ function ReportsIntro() {
     snapshot.monthlySpendingTrend.length > 0
 
   return (
-    <div className="space-y-4 md:space-y-5">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 md:gap-8">
       <PageHero
         eyebrow="Reports"
-        title="See patterns over time"
-        description="Track routine consistency, task completion, and spending behavior with lightweight summaries that stay readable even when data is still sparse."
+        title="Your progress over time"
+        description="A simple look at your habits, tasks, and spending."
       />
 
       <ReportsSummaryCards
@@ -42,24 +44,31 @@ function ReportsIntro() {
       />
 
       {!hasAnyReportData ? (
-        <EmptyState>
-          Reports will fill in as you complete routines, finish planner tasks, and log expenses over time.
+        <EmptyState className="bg-slate-950/20">
+          Start using the Planner, Routine, and Budget to see your trends here.
         </EmptyState>
-      ) : null}
+      ) : (
+        <>
+          <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr] md:gap-6">
+            <RoutineTrendCard
+              routineTrend={snapshot.routineTrend}
+              hasData={snapshot.hasRoutineTrendData}
+            />
+            <ConsistencyGrid data={snapshot.consistencyTrend} />
+          </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <RoutineTrendCard
-          routineTrend={snapshot.routineTrend}
-          hasData={snapshot.hasRoutineTrendData}
-        />
-        <SpendingSummaryCard
-          summary={snapshot.monthlySpendingSummary}
-          trend={snapshot.monthlySpendingTrend}
-          currency={snapshot.currency}
-        />
-      </section>
+          <section className="grid gap-4 md:gap-6">
+            <SpendingSummaryCard
+              summary={snapshot.monthlySpendingSummary}
+              trend={snapshot.monthlySpendingTrend}
+              currency={snapshot.currency}
+            />
+          </section>
+        </>
+      )}
     </div>
   )
 }
 
 export default ReportsIntro
+

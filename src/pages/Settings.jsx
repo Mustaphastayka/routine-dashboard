@@ -88,19 +88,19 @@ function Settings() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-5">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 md:gap-6">
       <PageHero
         eyebrow="Settings"
-        title="Manage your profile and data"
-        description="Keep your name in sync across the app, back up your dashboard data, or reset everything when you want a fresh start."
+        title="Settings"
+        description="Manage your profile, backup data, or start fresh."
       />
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <Card as="article" variant="hero">
           <SectionHeader
             eyebrow="Profile"
             title="Update your name"
-            description="This name appears in places like the Dashboard greeting."
+            description="Your name appears on the Dashboard."
           />
 
           <form className="mt-5 space-y-4" onSubmit={handleProfileSubmit}>
@@ -127,7 +127,7 @@ function Settings() {
           <SectionHeader
             eyebrow="Data"
             title="Export, import, or reset"
-            description="Back up your dashboard as JSON, restore from a JSON export, or clear all saved data."
+            description="Back up your data, restore from a backup, or clear everything."
           />
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">

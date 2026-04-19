@@ -12,6 +12,7 @@ export const defaultAppData = {
   dailyProgressByDate: {},
   planner: {
     today: [],
+    tomorrow: [],
     thisWeek: [],
     thisMonth: [],
   },

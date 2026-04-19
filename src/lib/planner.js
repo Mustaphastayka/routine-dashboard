@@ -4,6 +4,7 @@ import { readAppData, readNormalizedSection, updateNormalizedSection } from './s
 
 export const plannerSections = [
   { id: 'today', label: 'Today' },
+  { id: 'tomorrow', label: 'Tomorrow' },
   { id: 'thisWeek', label: 'This Week' },
   { id: 'thisMonth', label: 'This Month' },
 ]
@@ -52,12 +53,14 @@ function normalizePlannerData(rawPlanner) {
   if (!isPlainObject(rawPlanner)) {
     return {
       today: [],
+      tomorrow: [],
       thisWeek: [],
       thisMonth: [],
     }
   }
 
   const todaySource = Array.isArray(rawPlanner.today) ? rawPlanner.today : safePlanner.today
+  const tomorrowSource = Array.isArray(rawPlanner.tomorrow) ? rawPlanner.tomorrow : safePlanner.tomorrow
   const thisWeekSource = Array.isArray(rawPlanner.thisWeek)
     ? rawPlanner.thisWeek
     : Array.isArray(rawPlanner.upcoming)
@@ -71,6 +74,7 @@ function normalizePlannerData(rawPlanner) {
 
   return {
     today: todaySource.map((task, index) => normalizeTask(task, index, 'today')),
+    tomorrow: tomorrowSource.map((task, index) => normalizeTask(task, index, 'tomorrow')),
     thisWeek: thisWeekSource.map((task, index) =>
       normalizeTask(task, index, 'thisWeek'),
     ),
@@ -205,9 +209,7 @@ export function togglePlannerTask(sectionId, taskId) {
                 ? targetDuration > 0
                   ? targetDuration
                   : task.progressMinutes
-                : targetDuration > 0 && task.progressMinutes >= targetDuration
-                  ? Math.max(targetDuration - 5, 0)
-                  : task.progressMinutes
+                : task.progressMinutes
 
               return normalizeTask(
                 {
