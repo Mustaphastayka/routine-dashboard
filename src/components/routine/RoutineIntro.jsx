@@ -27,6 +27,10 @@ import {
   readRoutineState,
   setRoutineTaskStatus,
   updateRoutineTemplateTask,
+  addRoutineTaskForDate,
+  updateRoutineTaskForDate,
+  deleteRoutineTaskForDate,
+  moveRoutineTaskForDate,
 } from '../../lib/routines.js'
 
 function createRoutineFormState() {
@@ -72,6 +76,11 @@ function RoutineIntro() {
   const [activeMenuId, setActiveMenuId] = useState(null)
   const routineInputRef = useRef(null)
   const additionInputRef = useRef(null)
+
+  const [tomorrowForm, setTomorrowForm] = useState(() => createRoutineFormState())
+  const [editingTomorrowStepId, setEditingTomorrowStepId] = useState(null)
+  const [activeTomorrowMenuId, setActiveTomorrowMenuId] = useState(null)
+  const tomorrowInputRef = useRef(null)
 
   const {
     selectedRoutineName = '',
@@ -126,23 +135,81 @@ function RoutineIntro() {
     }
 
     if (editingStepId) {
-      setRoutineState(
-        updateRoutineTemplateTask({
+      if (routineState.hasDateSpecificToday) {
+        setRoutineState(updateRoutineTaskForDate({
+          dateKey: routineState.todayKey,
+          stepId: editingStepId,
+          label: routineForm.label,
+          timeLabel: routineForm.timeLabel
+        }))
+      } else {
+        setRoutineState(updateRoutineTemplateTask({
           stepId: editingStepId,
           label: routineForm.label,
           timeLabel: routineForm.timeLabel,
-        }),
-      )
+        }))
+      }
     } else {
-      setRoutineState(
-        addRoutineTemplateTask({
+      if (routineState.hasDateSpecificToday) {
+        setRoutineState(addRoutineTaskForDate({
+          dateKey: routineState.todayKey,
           label: routineForm.label,
           timeLabel: routineForm.timeLabel,
-        }),
-      )
+          fallbackSteps: routineState.routineSteps
+        }))
+      } else {
+        setRoutineState(addRoutineTemplateTask({
+          label: routineForm.label,
+          timeLabel: routineForm.timeLabel,
+        }))
+      }
     }
 
     resetRoutineForm()
+  }
+
+  const handleTomorrowSubmit = (event) => {
+    event.preventDefault()
+    if (!tomorrowForm.label.trim()) return
+
+    if (editingTomorrowStepId) {
+      setRoutineState(updateRoutineTaskForDate({
+        dateKey: routineState.tomorrowKey,
+        stepId: editingTomorrowStepId,
+        label: tomorrowForm.label,
+        timeLabel: tomorrowForm.timeLabel
+      }))
+    } else {
+      setRoutineState(addRoutineTaskForDate({
+        dateKey: routineState.tomorrowKey,
+        label: tomorrowForm.label,
+        timeLabel: tomorrowForm.timeLabel,
+        fallbackSteps: routineState.tomorrowSteps ?? []
+      }))
+    }
+    resetTomorrowForm()
+  }
+
+  const resetTomorrowForm = () => {
+    setTomorrowForm(createRoutineFormState())
+    setEditingTomorrowStepId(null)
+  }
+
+  const handleEditTomorrowStep = (step) => {
+    setEditingTomorrowStepId(step.id)
+    setTomorrowForm({
+      label: step.label,
+      timeLabel: step.timeLabel ?? '',
+    })
+    tomorrowInputRef.current?.focus()
+  }
+
+  const handleDeleteTomorrowStep = (stepId) => {
+    setRoutineState(deleteRoutineTaskForDate({ dateKey: routineState.tomorrowKey, stepId }))
+  }
+
+  const handleMoveTomorrowStep = (stepId, direction) => {
+    setRoutineState(moveRoutineTaskForDate({ dateKey: routineState.tomorrowKey, stepId, direction }))
   }
 
   const handleEditRoutineStep = (step) => {
@@ -155,7 +222,11 @@ function RoutineIntro() {
   }
 
   const handleDeleteRoutineStep = (stepId) => {
-    setRoutineState(deleteRoutineTemplateTask({ stepId }))
+    if (routineState.hasDateSpecificToday) {
+      setRoutineState(deleteRoutineTaskForDate({ dateKey: routineState.todayKey, stepId }))
+    } else {
+      setRoutineState(deleteRoutineTemplateTask({ stepId }))
+    }
 
     if (editingStepId === stepId) {
       resetRoutineForm()
@@ -163,7 +234,11 @@ function RoutineIntro() {
   }
 
   const handleMoveRoutineStep = (stepId, direction) => {
-    setRoutineState(moveRoutineTemplateTask({ stepId, direction }))
+    if (routineState.hasDateSpecificToday) {
+      setRoutineState(moveRoutineTaskForDate({ dateKey: routineState.todayKey, stepId, direction }))
+    } else {
+      setRoutineState(moveRoutineTemplateTask({ stepId, direction }))
+    }
   }
 
   const handleAdditionSubmit = (event) => {
@@ -205,6 +280,10 @@ function RoutineIntro() {
     routineInputRef.current?.focus()
   }
 
+  const focusTomorrowInput = () => {
+    tomorrowInputRef.current?.focus()
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 md:gap-6">
       <PageHero
@@ -214,11 +293,12 @@ function RoutineIntro() {
       />
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.8fr)]">
-        <Card
-          as="article"
-          variant="hero"
-          className="bg-[linear-gradient(180deg,rgba(15,23,42,0.9),rgba(15,23,42,0.65))] shadow-[0_20px_60px_rgba(15,23,42,0.4)]"
-        >
+        <div className="flex flex-col gap-4">
+          <Card
+            as="article"
+            variant="hero"
+            className="bg-[linear-gradient(180deg,rgba(15,23,42,0.9),rgba(15,23,42,0.65))] shadow-[0_20px_60px_rgba(15,23,42,0.4)]"
+          >
           <SectionHeader
             eyebrow="Your routine"
             title={selectedRoutineName || 'Your routine'}
@@ -374,12 +454,16 @@ function RoutineIntro() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-base font-semibold text-white">
-                    {nextSuggestedTask?.label ?? 'Everything is done'}
+                    {totalCount === 0 
+                      ? 'No tasks scheduled' 
+                      : nextSuggestedTask?.label ?? 'Everything is done'}
                   </p>
                   <p className="mt-1 text-sm text-slate-400">
-                    {nextSuggestedTask
-                      ? 'This is the next task.'
-                      : 'You have no more tasks.'}
+                    {totalCount === 0
+                      ? 'Add a task above to get started.'
+                      : nextSuggestedTask
+                        ? 'This is the next task.'
+                        : 'You have no more tasks.'}
                   </p>
                 </div>
               </div>
@@ -569,27 +653,172 @@ function RoutineIntro() {
           </div>
         </Card>
 
+        <Card
+          as="article"
+          variant="hero"
+          className="bg-[linear-gradient(180deg,rgba(15,23,42,0.6),rgba(15,23,42,0.4))] border-cyan-500/10 shadow-lg"
+        >
+          <SectionHeader
+            eyebrow="Prepare for tomorrow"
+            title="Tomorrow's Routine"
+            description={routineState.tomorrowDateFormatted}
+            action={
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-400/10 bg-cyan-400/5 text-cyan-200/50">
+                <Sparkles size={18} />
+              </div>
+            }
+          />
+
+          <form className="mt-5 space-y-4" onSubmit={handleTomorrowSubmit}>
+            <div className="rounded-3xl border border-white/8 bg-slate-950/30 px-4 py-4">
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-300">
+                    Task title
+                  </span>
+                  <input
+                    ref={tomorrowInputRef}
+                    type="text"
+                    value={tomorrowForm.label}
+                    onChange={(event) =>
+                      setTomorrowForm((f) => ({ ...f, label: event.target.value }))
+                    }
+                    placeholder="Morning walk, read, school run..."
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-300/40 focus:ring-2 focus:ring-cyan-400/20"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-300">
+                    Time (optional)
+                  </span>
+                  <input
+                    type="time"
+                    value={tomorrowForm.timeLabel}
+                    onChange={(event) =>
+                      setTomorrowForm((f) => ({ ...f, timeLabel: event.target.value }))
+                    }
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-300/40 focus:ring-2 focus:ring-cyan-400/20"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <Button type="submit" className="flex-1">
+                  <span className="flex items-center justify-center gap-2">
+                    <Plus size={16} />
+                    {editingTomorrowStepId ? 'Save task' : 'Add task for tomorrow'}
+                  </span>
+                </Button>
+                {editingTomorrowStepId ? (
+                  <Button type="button" variant="secondary" onClick={resetTomorrowForm}>
+                    Cancel
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </form>
+
+          <div className="mt-5 space-y-3">
+            {routineState.tomorrowSteps && routineState.tomorrowSteps.length > 0 ? (
+              routineState.tomorrowSteps.map((step, index) => (
+                <article
+                  key={step.id}
+                  className="relative rounded-2xl border border-white/5 bg-white/[0.02] px-4 py-4 transition-all hover:bg-white/[0.04]"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/50 text-[13px] font-bold text-slate-400">
+                        {index + 1}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[15px] font-semibold text-white">{step.label}</p>
+                        {step.timeLabel && (
+                          <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+                            <Clock3 size={12} />
+                            {step.timeLabel}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTomorrowMenuId(activeTomorrowMenuId === `step-${step.id}` ? null : `step-${step.id}`)}
+                        className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-white/5 hover:text-white"
+                      >
+                        <MoreVertical size={20} />
+                      </button>
+
+                      {activeTomorrowMenuId === `step-${step.id}` && (
+                        <div className="absolute right-0 top-12 z-20 w-48 rounded-2xl border border-white/10 bg-slate-900 p-2 shadow-2xl">
+                          <button
+                            onClick={() => { handleEditTomorrowStep(step); setActiveTomorrowMenuId(null); }}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-slate-300 hover:bg-white/5"
+                          >
+                            <Pencil size={16} /> Edit Task
+                          </button>
+                          <div className="my-1 border-t border-white/5" />
+                          <button
+                            onClick={() => { handleMoveTomorrowStep(step.id, 'up'); setActiveTomorrowMenuId(null); }}
+                            disabled={index === 0}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-slate-300 hover:bg-white/5 disabled:opacity-30"
+                          >
+                            <ArrowUp size={16} /> Move Up
+                          </button>
+                          <button
+                            onClick={() => { handleMoveTomorrowStep(step.id, 'down'); setActiveTomorrowMenuId(null); }}
+                            disabled={index === routineState.tomorrowSteps.length - 1}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-slate-300 hover:bg-white/5 disabled:opacity-30"
+                          >
+                            <ArrowDown size={16} /> Move Down
+                          </button>
+                          <div className="my-1 border-t border-white/5" />
+                          <button
+                            onClick={() => { handleDeleteTomorrowStep(step.id); setActiveTomorrowMenuId(null); }}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-rose-400 hover:bg-rose-500/10"
+                          >
+                            <Trash2 size={16} /> Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <EmptyState
+                action={{ label: "Add tomorrow's first task", onClick: focusTomorrowInput }}
+              >
+                Tomorrow's routine is not prepared yet.
+              </EmptyState>
+            )}
+          </div>
+        </Card>
+        </div>
+
         <Card>
           <SectionHeader
             eyebrow="Today"
-            title={`${completionPercent}% complete`}
-            description="Your daily progress resets every day."
+            title={totalCount > 0 ? `${completionPercent}% complete` : "No tasks today"}
+            description={totalCount > 0 ? "Your daily progress resets every day." : "Take a break or prepare for tomorrow."}
           />
           <div className="mt-5 flex items-center gap-4">
             <div
-              className="grid h-24 w-24 place-items-center rounded-full p-2"
-              style={progressStyle}
+              className={`grid h-24 w-24 place-items-center rounded-full p-2 ${totalCount === 0 ? 'opacity-30 grayscale' : ''}`}
+              style={totalCount > 0 ? progressStyle : { background: 'rgba(255,255,255,0.05)' }}
               aria-hidden="true"
             >
               <div className="grid h-full w-full place-items-center rounded-full bg-slate-950 text-center">
                 <span className="text-lg font-semibold text-white">
-                  {completionPercent}%
+                  {totalCount > 0 ? `${completionPercent}%` : '-'}
                 </span>
               </div>
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white">
-                {completedCount} of {totalCount} done
+                {totalCount > 0 ? `${completedCount} of ${totalCount} done` : 'No tasks scheduled'}
               </h3>
               <p className="mt-1 text-sm text-slate-400">
                 Progress is saved only for {todayKey}.
@@ -597,28 +826,32 @@ function RoutineIntro() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.06] px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-200/70">
-                Completed
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-white">{completedCount}</p>
+          {totalCount > 0 && (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.06] px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-200/70">
+                  Completed
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-white">{completedCount}</p>
+              </div>
+              <div className="rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-100/80">
+                  Skipped
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-white">{skippedCount}</p>
+              </div>
             </div>
-            <div className="rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-100/80">
-                Skipped
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-white">{skippedCount}</p>
-            </div>
-          </div>
+          )}
 
           <div className="mt-5">
-            <div className="h-3 overflow-hidden rounded-full bg-white/8">
-              <div
-                className="h-full rounded-full bg-cyan-300 transition-[width]"
-                style={{ width: `${completionPercent}%` }}
-              />
-            </div>
+            {totalCount > 0 && (
+              <div className="h-3 overflow-hidden rounded-full bg-white/8">
+                <div
+                  className="h-full rounded-full bg-cyan-300 transition-[width]"
+                  style={{ width: `${completionPercent}%` }}
+                />
+              </div>
+            )}
             <p className="mt-3 text-sm text-slate-400">
               {previousTrackedDays > 0
                 ? `${previousTrackedDays} earlier day${previousTrackedDays === 1 ? '' : 's'} saved.`

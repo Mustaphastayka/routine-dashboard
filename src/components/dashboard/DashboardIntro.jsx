@@ -25,8 +25,8 @@ function DashboardIntro({ onNavigate }) {
   const completedTasksCount = snapshot.todaysPlannerTasks.filter(t => t.completed).length
   const isDayComplete = snapshot.todaysPlannerTasks.length > 0 && openTasks.length === 0
 
-  const handleDashboardPlannerToggle = (taskId) => {
-    togglePlannerTask('today', taskId)
+  const handleDashboardPlannerToggle = (task) => {
+    togglePlannerTask(task.sectionId, task.id)
     setSnapshot(readDashboardSnapshot())
   }
 
@@ -37,7 +37,7 @@ function DashboardIntro({ onNavigate }) {
     addPlannerTask('today', {
       title: newTaskTitle.trim(),
       priority: 'medium',
-      dueDate: '',
+      dueDate: snapshot.dateKey,
       targetDuration: 60,
       completed: false
     })
@@ -81,7 +81,7 @@ function DashboardIntro({ onNavigate }) {
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.2)] animate-bounce">
                 <Trophy size={40} />
               </div>
-              <h3 className="mt-6 text-2xl font-bold text-white md:text-3xl">✅ Day complete!</h3>
+              <h3 className="mt-6 text-2xl font-bold text-white md:text-3xl">Day complete!</h3>
               <p className="mt-3 max-w-sm text-sm leading-relaxed text-slate-400">
                 You've cleared everything on your list. Take a moment to appreciate the progress you've made today.
               </p>
@@ -110,7 +110,7 @@ function DashboardIntro({ onNavigate }) {
               <div className="mt-8">
                 <Button 
                   className="h-14 w-full text-base font-semibold shadow-xl shadow-cyan-500/20 md:w-auto md:px-10" 
-                  onClick={() => handleDashboardPlannerToggle(primaryTask.id)}
+                  onClick={() => handleDashboardPlannerToggle(primaryTask)}
                 >
                   Complete current focus
                 </Button>
@@ -167,7 +167,7 @@ function DashboardIntro({ onNavigate }) {
                   key={task.id}
                   title={task.title}
                   completed={task.completed}
-                  onToggle={() => handleDashboardPlannerToggle(task.id)}
+                  onToggle={() => handleDashboardPlannerToggle(task)}
                 >
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                     {task.priority}
@@ -196,21 +196,31 @@ function DashboardIntro({ onNavigate }) {
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Routine Status</p>
-              <p className="mt-0.5 truncate text-base font-semibold text-white">{snapshot.routineName}</p>
+              <p className="mt-0.5 truncate text-base font-semibold text-white">
+                {snapshot.hasRoutine ? snapshot.routineName : 'No routine set for today'}
+              </p>
             </div>
           </div>
           
           <div className="mt-6">
-            <div className="flex items-center justify-between text-xs font-medium text-slate-400 mb-2">
-              <span>{snapshot.routineCompletionPercentage}% Complete</span>
-              <span className="truncate max-w-[120px]">Next: {snapshot.nextIncompleteRoutineItem}</span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
-              <div
-                className="h-full rounded-full bg-cyan-500 transition-all duration-700"
-                style={{ width: `${snapshot.routineCompletionPercentage}%` }}
-              />
-            </div>
+            {snapshot.hasRoutine ? (
+              <>
+                <div className="flex items-center justify-between text-xs font-medium text-slate-400 mb-2">
+                  <span>{snapshot.routineCompletionPercentage}% Complete</span>
+                  <span className="truncate max-w-[120px]">Next: {snapshot.nextIncompleteRoutineItem}</span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
+                  <div
+                    className="h-full rounded-full bg-cyan-500 transition-all duration-700"
+                    style={{ width: `${snapshot.routineCompletionPercentage}%` }}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center rounded-xl bg-white/5 p-4 text-xs text-slate-400 border border-dashed border-white/10 text-center">
+                You haven't scheduled any tasks for today's routine.
+              </div>
+            )}
             <button 
               onClick={() => onNavigate('routine')}
               className="mt-4 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-cyan-500 transition hover:text-cyan-400"

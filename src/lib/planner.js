@@ -1,5 +1,5 @@
 import { defaultAppData } from '../data/defaultAppData.js'
-import { createEntityId, isPlainObject } from './dataUtils.js'
+import { createEntityId, isPlainObject, getLocalDateKey } from './dataUtils.js'
 import { readAppData, readNormalizedSection, updateNormalizedSection } from './storage.js'
 
 export const plannerSections = [
@@ -88,6 +88,24 @@ export function readPlannerState(appData = readAppData()) {
   return readNormalizedSection('planner', normalizePlannerData, appData)
 }
 
+export function getAllPlannerTasks(plannerState) {
+  return plannerSections.flatMap(section => 
+    plannerState[section.id].map(task => ({ ...task, sectionId: section.id }))
+  )
+}
+
+export function isTaskForDate(task, dateKey) {
+  return task.dueDate === dateKey
+}
+
+export function getTasksForDate(tasks, dateKey) {
+  return tasks.filter(task => isTaskForDate(task, dateKey))
+}
+
+export function getIncompleteTasksForDate(tasks, dateKey) {
+  return getTasksForDate(tasks, dateKey).filter(task => !task.completed)
+}
+
 function writePlannerState(updater) {
   const nextAppData = updateNormalizedSection('planner', normalizePlannerData, updater)
   return readPlannerState(nextAppData)
@@ -96,7 +114,12 @@ function writePlannerState(updater) {
 export function addPlannerTask(sectionId, taskInput) {
   return writePlannerState((currentPlanner) => {
     const targetSection = sectionIds.includes(sectionId) ? sectionId : 'today'
-    if (targetSection === 'today' && currentPlanner.today.length >= todayMissionLimit) {
+    const todayKey = getLocalDateKey()
+    const tasksDueTodayCount = getAllPlannerTasks(currentPlanner).filter(
+      (task) => task.dueDate === todayKey,
+    ).length
+
+    if (taskInput.dueDate === todayKey && tasksDueTodayCount >= todayMissionLimit) {
       return currentPlanner
     }
     const targetDuration = Math.max(0, Number(taskInput.targetDuration) || 0)

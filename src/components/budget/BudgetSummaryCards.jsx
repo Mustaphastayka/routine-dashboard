@@ -46,11 +46,11 @@ function BudgetSummaryCards({
         value={formatCurrency(recurringBillsTotal, currency)}
       />
       <SummaryCard
-        label="Expenses"
+        label="This month spent"
         value={formatCurrency(expensesTotal, currency)}
       />
       <SummaryCard
-        label="Remaining balance"
+        label="This month left"
         value={formatCurrency(remainingMonthlyBalance, currency)}
         tone={remainingTone}
       />

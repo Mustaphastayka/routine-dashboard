@@ -1,5 +1,5 @@
 import { defaultAppData } from '../data/defaultAppData.js'
-import { createEntityId, getMonthKey, isPlainObject } from './dataUtils.js'
+import { createEntityId, getLocalDateKey, getMonthKey, isPlainObject } from './dataUtils.js'
 import { readAppData, readNormalizedSection, updateNormalizedSection } from './storage.js'
 
 const defaultBudget = defaultAppData.budget
@@ -96,15 +96,22 @@ function getMonthLabel(monthKey) {
 
 export function readBudgetState(appData = readAppData()) {
   const budget = readNormalizedSection('budget', normalizeBudgetData, appData)
+  const currentMonthKey = getMonthKey(getLocalDateKey())
   const recurringBillsTotal = budget.recurringBills.reduce(
     (sum, bill) => sum + bill.amount,
     0,
   )
-  const expensesTotal = budget.expenses.reduce((sum, expense) => sum + expense.amount, 0)
+  const currentMonthExpenses = budget.expenses.filter((expense) =>
+    expense.date.startsWith(currentMonthKey),
+  )
+  const expensesTotal = currentMonthExpenses.reduce(
+    (sum, expense) => sum + expense.amount,
+    0,
+  )
   const remainingMonthlyBalance =
     budget.monthlyIncome - recurringBillsTotal - expensesTotal
 
-  const categoryTotalsMap = budget.expenses.reduce((totals, expense) => {
+  const categoryTotalsMap = currentMonthExpenses.reduce((totals, expense) => {
     totals[expense.category] = (totals[expense.category] ?? 0) + expense.amount
     return totals
   }, {})
@@ -131,10 +138,7 @@ export function readBudgetState(appData = readAppData()) {
     .map(([month, expenseTotal]) => ({
       month,
       label: getMonthLabel(month),
-      income: budget.monthlyIncome,
-      bills: recurringBillsTotal,
       expenses: expenseTotal,
-      remaining: budget.monthlyIncome - recurringBillsTotal - expenseTotal,
     }))
 
   return {

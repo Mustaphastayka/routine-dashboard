@@ -13,7 +13,7 @@ function formatCurrency(amount, currency) {
 function MonthlyHistoryCard({ history, currency }) {
   return (
     <Card>
-      <SectionHeader eyebrow="Monthly history" title="Recent month snapshots" />
+      <SectionHeader eyebrow="Monthly history" title="Recent spending snapshots" />
 
       <div className="mt-5 space-y-3">
         {history.length > 0 ? (
@@ -24,29 +24,13 @@ function MonthlyHistoryCard({ history, currency }) {
             >
               <div className="flex items-center justify-between gap-3">
                 <h4 className="text-sm font-medium text-white">{month.label}</h4>
-                <span
-                  className={`text-sm font-semibold ${
-                    month.remaining >= 0 ? 'text-emerald-300' : 'text-amber-300'
-                  }`}
-                >
-                  {formatCurrency(month.remaining, currency)}
+                <span className="text-sm font-semibold text-white">
+                  {formatCurrency(month.expenses, currency)}
                 </span>
               </div>
-              <div className="mt-3 grid gap-3 text-xs text-slate-400 sm:grid-cols-3">
+              <div className="mt-3 text-xs text-slate-400">
                 <div>
-                  <p className="uppercase tracking-[0.16em]">Income</p>
-                  <p className="mt-1 text-sm text-white">
-                    {formatCurrency(month.income, currency)}
-                  </p>
-                </div>
-                <div>
-                  <p className="uppercase tracking-[0.16em]">Bills</p>
-                  <p className="mt-1 text-sm text-white">
-                    {formatCurrency(month.bills, currency)}
-                  </p>
-                </div>
-                <div>
-                  <p className="uppercase tracking-[0.16em]">Expenses</p>
+                  <p className="uppercase tracking-[0.16em]">Expenses logged</p>
                   <p className="mt-1 text-sm text-white">
                     {formatCurrency(month.expenses, currency)}
                   </p>
@@ -56,7 +40,7 @@ function MonthlyHistoryCard({ history, currency }) {
           ))
         ) : (
           <EmptyState>
-            Monthly history will appear once expenses span multiple dates.
+            Monthly history will appear once expenses are logged across different months.
           </EmptyState>
         )}
       </div>

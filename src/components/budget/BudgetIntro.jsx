@@ -16,6 +16,7 @@ import IncomePanel from './IncomePanel.jsx'
 import MonthlyHistoryCard from './MonthlyHistoryCard.jsx'
 import RecurringBillsPanel from './RecurringBillsPanel.jsx'
 import SpendingChartCard from './SpendingChartCard.jsx'
+import { getLocalDateKey } from '../../lib/dataUtils.js'
 
 const initialBillForm = {
   title: '',
@@ -24,11 +25,13 @@ const initialBillForm = {
   category: 'Housing',
 }
 
-const initialExpenseForm = {
-  title: '',
-  amount: '',
-  date: new Date().toISOString().slice(0, 10),
-  category: 'Other',
+function createInitialExpenseForm(category = 'Other') {
+  return {
+    title: '',
+    amount: '',
+    date: getLocalDateKey(),
+    category,
+  }
 }
 
 function BudgetIntro() {
@@ -36,7 +39,7 @@ function BudgetIntro() {
   const [editingBillId, setEditingBillId] = useState(null)
   const [editingExpenseId, setEditingExpenseId] = useState(null)
   const [billForm, setBillForm] = useState(initialBillForm)
-  const [expenseForm, setExpenseForm] = useState(initialExpenseForm)
+  const [expenseForm, setExpenseForm] = useState(() => createInitialExpenseForm())
 
   const resetBillForm = () => {
     setEditingBillId(null)
@@ -48,11 +51,7 @@ function BudgetIntro() {
 
   const resetExpenseForm = () => {
     setEditingExpenseId(null)
-    setExpenseForm({
-      ...initialExpenseForm,
-      category: budgetState.categories[0] ?? 'Other',
-      date: new Date().toISOString().slice(0, 10),
-    })
+    setExpenseForm(createInitialExpenseForm(budgetState.categories[0] ?? 'Other'))
   }
 
   const updateBillForm = (field, value) => {

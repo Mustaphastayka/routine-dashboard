@@ -14,6 +14,9 @@ import {
   todayMissionLimit,
   togglePlannerTask,
   updatePlannerTask,
+  getAllPlannerTasks,
+  getTasksForDate,
+  isTaskForDate,
 } from '../../lib/planner.js'
 
 const statusFilters = [
@@ -121,7 +124,7 @@ function PlannerTaskCard({
               
               {task.dueDate ? (
                 <>
-                  <span className="text-slate-600">•</span>
+                  <span className="text-slate-600">/</span>
                   <span className={`text-[11px] font-medium ${
                     task.completed ? 'text-slate-500' : 'text-slate-400'
                   }`}>
@@ -132,7 +135,7 @@ function PlannerTaskCard({
 
               {nextFocus && !task.completed ? (
                 <>
-                  <span className="text-slate-600">•</span>
+                  <span className="text-slate-600">/</span>
                   <span className="rounded bg-cyan-400/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-cyan-300">
                     Next Focus
                   </span>
@@ -272,18 +275,22 @@ function PlannerIntro() {
   const hasAnyTasks = plannerSections.some(
     (section) => (plannerState?.[section.id] ?? []).length > 0,
   )
-  const nextFocusMission = plannerState.today.find((task) => !task.completed) ?? null
+  const todayTasks = useMemo(() => {
+    const allTasks = getAllPlannerTasks(plannerState)
+    return getTasksForDate(allTasks, getLocalDateKey())
+  }, [plannerState])
+  const nextFocusMission = todayTasks.find((task) => !task.completed) ?? null
   const unifiedTasks = plannerSections.flatMap((section) =>
     filteredTasksBySection[section.id].map((task) => ({
       ...task,
       sectionId: section.id,
       sectionLabel: section.label,
-      isTodayMission: section.id === 'today',
+      isTodayMission: isTaskForDate(task, getLocalDateKey()),
     })),
   )
-  const missionsRemaining = Math.max(0, todayMissionLimit - plannerState.today.length)
+  const missionsRemaining = Math.max(0, todayMissionLimit - todayTasks.length)
   const isTodaySectionFull =
-    !editingTask && taskForm.sectionId === 'today' && plannerState.today.length >= todayMissionLimit
+    !editingTask && taskForm.dueDate === getLocalDateKey() && todayTasks.length >= todayMissionLimit
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 md:gap-5">
@@ -476,7 +483,7 @@ function PlannerIntro() {
                       Today's missions
                     </p>
                     <p className="mt-2 text-2xl font-semibold text-white">
-                      {plannerState.today.length} / {todayMissionLimit}
+                      {todayTasks.length} / {todayMissionLimit}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
@@ -484,7 +491,7 @@ function PlannerIntro() {
                       Open today
                     </p>
                     <p className="mt-2 text-2xl font-semibold text-white">
-                      {plannerState.today.filter((task) => !task.completed).length}
+                      {todayTasks.filter((task) => !task.completed).length}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
@@ -557,7 +564,7 @@ function PlannerIntro() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   highlight={task.isTodayMission}
-                  nextFocus={nextFocusMission?.id === task.id && task.sectionId === 'today'}
+                  nextFocus={nextFocusMission?.id === task.id && nextFocusMission?.sectionId === task.sectionId}
                 />
               ))
             ) : (

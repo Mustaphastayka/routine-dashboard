@@ -1,6 +1,6 @@
 import { readAppData } from './storage.js'
 import { getLocalDateKey } from './dataUtils.js'
-import { plannerSections, readPlannerState } from './planner.js'
+import { plannerSections, readPlannerState, getAllPlannerTasks, getTasksForDate } from './planner.js'
 import { readBudgetState } from './budget.js'
 import { readRoutineState } from './routines.js'
 
@@ -50,7 +50,8 @@ export function readDashboardSnapshot() {
     : 'No routine today'
 
   const plannerState = readPlannerState(appData)
-  const todaysPlannerTasks = plannerState.today
+  const allTasks = getAllPlannerTasks(plannerState)
+  const todaysPlannerTasks = getTasksForDate(allTasks, todayKey)
   const topPlannerTasks = plannerSections
     .flatMap((section) =>
       plannerState[section.id].map((task) => ({
@@ -72,6 +73,7 @@ export function readDashboardSnapshot() {
   )
 
   return {
+    dateKey: todayKey,
     date: formatDateParts(now),
     greeting: profileName ? `${getGreeting(now)}, ${profileName}` : getGreeting(now),
     routineCompletionPercentage,

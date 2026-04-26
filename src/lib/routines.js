@@ -208,26 +208,177 @@ export function readRoutineState(appData = readAppData()) {
     templates[0] ??
     fallbackTemplate ??
     null
+    
   const todayKey = getLocalDateKey()
+  const tomorrowDate = new Date()
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+  const tomorrowKey = getLocalDateKey(tomorrowDate)
+  const tomorrowDateFormatted = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric'
+  }).format(tomorrowDate)
+
   const allDailyProgress = appData.dailyProgressByDate ?? {}
   const todayProgress = appData.dailyProgressByDate?.[todayKey] ?? {}
+
+  const dateSpecificTodaySteps = appData.routinesByDate?.[todayKey]
+  const hasDateSpecificToday = !!dateSpecificTodaySteps
+  const routineSteps = dateSpecificTodaySteps ?? selectedTemplate?.steps ?? []
+
+  const activeTemplate = dateSpecificTodaySteps 
+    ? { id: `date-${todayKey}`, name: 'Today\'s Routine', steps: dateSpecificTodaySteps }
+    : selectedTemplate
+
   const routineDayState = buildRoutineDayState({
-    template: selectedTemplate,
+    template: activeTemplate,
     currentDay: todayProgress,
   })
   const savedDateKeys = Object.keys(allDailyProgress)
   const previousTrackedDays = savedDateKeys.filter((dateKey) => dateKey !== todayKey).length
 
+  const tomorrowSteps = appData.routinesByDate?.[tomorrowKey]
+
   return {
     templates,
     selectedTemplateId: selectedTemplate?.id ?? '',
-    selectedRoutineName: selectedTemplate?.name ?? '',
-    routineSteps: selectedTemplate?.steps ?? [],
+    selectedRoutineName: dateSpecificTodaySteps ? 'Today\'s Routine' : (selectedTemplate?.name ?? ''),
+    routineSteps,
+    hasDateSpecificToday,
+    tomorrowSteps,
+    tomorrowKey,
+    tomorrowDateFormatted,
     todayKey,
     dailyProgressByDate: allDailyProgress,
     previousTrackedDays,
     ...routineDayState,
   }
+}
+
+function saveRoutineForDate(dateKey, steps) {
+  const nextAppData = updateAppData((currentData) => {
+    const routinesByDate = currentData.routinesByDate ?? {}
+    return {
+      ...currentData,
+      routinesByDate: {
+        ...routinesByDate,
+        [dateKey]: steps,
+      }
+    }
+  })
+  return readRoutineState(nextAppData)
+}
+
+export function addRoutineTaskForDate({ dateKey, label, timeLabel = '', fallbackSteps = [] }) {
+  const trimmedLabel = label.trim()
+  if (!trimmedLabel) return readRoutineState()
+  
+  const appData = readAppData()
+  const existingSteps = appData.routinesByDate?.[dateKey] ?? fallbackSteps
+  
+  const newSteps = [
+    ...existingSteps,
+    {
+      id: createEntityId('routine-step'),
+      label: trimmedLabel,
+      timeLabel: timeLabel.trim()
+    }
+  ]
+  return saveRoutineForDate(dateKey, newSteps)
+}
+
+export function updateRoutineTaskForDate({ dateKey, stepId, label, timeLabel = '' }) {
+  const trimmedLabel = label.trim()
+  if (!trimmedLabel) return readRoutineState()
+
+  const appData = readAppData()
+  const existingSteps = appData.routinesByDate?.[dateKey] ?? []
+  
+  const newSteps = existingSteps.map(step => 
+    step.id === stepId 
+      ? { ...step, label: trimmedLabel, timeLabel: timeLabel.trim() }
+      : step
+  )
+  return saveRoutineForDate(dateKey, newSteps)
+}
+
+export function deleteRoutineTaskForDate({ dateKey, stepId }) {
+  const nextAppData = updateAppData((currentData) => {
+    const existingSteps = currentData.routinesByDate?.[dateKey] ?? []
+    const newSteps = existingSteps.filter(step => step.id !== stepId)
+    
+    const dailyProgressByDate = currentData.dailyProgressByDate ?? {}
+    const dayData = dailyProgressByDate[dateKey]
+    let nextDailyProgressByDate = dailyProgressByDate
+
+    if (dayData) {
+      const templateId = `date-${dateKey}`
+      const templateTaskKey = `template:${stepId}`
+
+      const completionByTemplate = { ...dayData.completionByTemplate }
+      if (completionByTemplate[templateId]) {
+        completionByTemplate[templateId] = completionByTemplate[templateId].filter(id => id !== stepId)
+      }
+
+      const routineStatusByTemplate = { ...dayData.routineStatusByTemplate }
+      if (routineStatusByTemplate[templateId]) {
+        delete routineStatusByTemplate[templateId][stepId]
+      }
+
+      const routineTaskOrder = Array.isArray(dayData.routineTaskOrder)
+        ? dayData.routineTaskOrder.filter(taskKey => taskKey !== templateTaskKey)
+        : dayData.routineTaskOrder
+
+      nextDailyProgressByDate = {
+        ...dailyProgressByDate,
+        [dateKey]: {
+          ...dayData,
+          completionByTemplate,
+          routineStatusByTemplate,
+          routineTaskOrder,
+        }
+      }
+    }
+
+    return {
+      ...currentData,
+      routinesByDate: {
+        ...(currentData.routinesByDate ?? {}),
+        [dateKey]: newSteps
+      },
+      dailyProgressByDate: nextDailyProgressByDate
+    }
+  })
+  return readRoutineState(nextAppData)
+}
+
+export function moveRoutineTaskForDate({ dateKey, stepId, direction }) {
+  const nextAppData = updateAppData((currentData) => {
+    const existingSteps = currentData.routinesByDate?.[dateKey] ?? []
+    const currentIndex = existingSteps.findIndex(step => step.id === stepId)
+    if (currentIndex === -1) return currentData
+    
+    const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (nextIndex < 0 || nextIndex >= existingSteps.length) return currentData
+
+    const newSteps = [...existingSteps]
+    const [moved] = newSteps.splice(currentIndex, 1)
+    newSteps.splice(nextIndex, 0, moved)
+
+    let nextDailyProgressByDate = currentData.dailyProgressByDate
+    if (currentData.dailyProgressByDate?.[dateKey]) {
+      const keysToStrip = newSteps.map(s => `template:${s.id}`)
+      nextDailyProgressByDate = stripTemplateTaskKeysFromOrder(currentData.dailyProgressByDate, keysToStrip)
+    }
+
+    return {
+      ...currentData,
+      routinesByDate: {
+        ...(currentData.routinesByDate ?? {}),
+        [dateKey]: newSteps
+      },
+      dailyProgressByDate: nextDailyProgressByDate
+    }
+  })
+  return readRoutineState(nextAppData)
 }
 
 export function addRoutineTemplateTask({ label, timeLabel = '' }) {

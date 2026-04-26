@@ -22,7 +22,10 @@ function formatCurrency(amount, currency) {
 function SpendingChartCard({ data, currency }) {
   return (
     <Card>
-      <SectionHeader eyebrow="Spending chart" title="Expenses by category" />
+      <SectionHeader
+        eyebrow="Spending chart"
+        title="This month's expenses by category"
+      />
 
       <div className="mt-5 h-64 sm:h-72">
         {data.length > 0 ? (
@@ -56,7 +59,7 @@ function SpendingChartCard({ data, currency }) {
           </ResponsiveContainer>
         ) : (
           <EmptyState className="flex h-full items-center justify-center text-center">
-            Add a few expenses to generate a category chart.
+            Add a few expenses this month to generate a category chart.
           </EmptyState>
         )}
       </div>

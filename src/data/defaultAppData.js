@@ -16,6 +16,7 @@ export const defaultAppData = {
     thisWeek: [],
     thisMonth: [],
   },
+  routinesByDate: {},
   budget: {
     currency: 'USD',
     monthlyIncome: 4200,

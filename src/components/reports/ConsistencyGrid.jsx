@@ -26,7 +26,7 @@ function ConsistencyGrid({ data = [] }) {
       
       <div className="mt-6 flex-1 flex items-center justify-center">
         <div className="grid grid-cols-7 gap-2">
-          {data.map((day, idx) => (
+          {data.map((day) => (
             <div
               key={day.date}
               className={`h-8 w-8 sm:h-10 sm:w-10 rounded-lg border ${getIntensityClass(day.completion)} transition-all duration-300 hover:scale-110`}
