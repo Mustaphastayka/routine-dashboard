@@ -217,8 +217,11 @@ function DashboardIntro({ onNavigate }) {
                 </div>
               </>
             ) : (
-              <div className="flex items-center justify-center rounded-xl bg-white/5 p-4 text-xs text-slate-400 border border-dashed border-white/10 text-center">
-                You haven't scheduled any tasks for today's routine.
+              <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-4 text-center">
+                <p className="text-sm font-medium text-slate-200">No routine set for today</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Nothing is scheduled, so there is no progress to track.
+                </p>
               </div>
             )}
             <button 

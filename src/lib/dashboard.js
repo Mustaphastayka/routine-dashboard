@@ -39,10 +39,11 @@ export function readDashboardSnapshot() {
     routineState.templates.find(
       (template) => template.id === routineState.selectedTemplateId,
     ) ?? routineState.templates[0] ?? null
-  const routineCompletionPercentage = routineState.completionPercent
-  const nextIncompleteRoutineItem =
-    routineState.nextSuggestedTask?.label ?? 'All routine items complete'
   const hasRoutine = routineState.totalCount > 0
+  const routineCompletionPercentage = hasRoutine ? routineState.completionPercent : null
+  const nextIncompleteRoutineItem = hasRoutine
+    ? routineState.nextSuggestedTask?.label ?? 'All routine items complete'
+    : null
   const routineStatusLabel = hasRoutine
     ? routineState.completedCount === routineState.totalCount
       ? 'Completed'
